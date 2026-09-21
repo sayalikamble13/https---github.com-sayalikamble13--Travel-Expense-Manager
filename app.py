@@ -1,3 +1,4 @@
+
 from datetime import date
 from io import BytesIO
 import matplotlib.pyplot as plt
@@ -258,7 +259,7 @@ def safe_index(lst, value):
 setup_database()
 
 # ==============================================================================
-# 4. GLOBAL CSS STYLING (FAINT MIXED PURPLE & ORANGE INNER BOXES & CUSTOM FONTS)
+# 4. GLOBAL CSS STYLING (MODIFIED FOR WHITE BOXES)
 # ==============================================================================
 st.markdown(
     """
@@ -272,7 +273,7 @@ st.markdown(
         font-weight: 900 !important;
     }
 
-    /* FAINT PURPLE AND ORANGE MIXED COLOR FOR INNER BOXES, CALENDARS, INPUTS, AND DOWNLOAD BOX */
+    /* MODIFIED SECTION: INNER BOXES, INPUTS, AND DOWNLOAD BOX to WHITE */
     div[data-baseweb="input"],
     div[data-baseweb="select"] > div,
     div[data-baseweb="base-input"],
@@ -286,15 +287,91 @@ st.markdown(
     .stTabs [data-baseweb="tab-panel"],
     .stDownloadButton,
     .stDownloadButton > button {
-        background: linear-gradient(135deg, #f3e5f5 0%, #fff3e0 100%) !important;
+        background: #ffffff !important;  /* Changed from gradient to solid white */
         border: 2px solid #ce93d8 !important;
         border-radius: 10px !important;
+    }
+    
+    /* MODIFIED SECTION: Ensure font inside white boxes is black */
+    .stNumberInput input,
+    .stTextInput input,
+    .stDateInput input,
+    .stSelectbox div[data-baseweb="select"] > div {
+        color: #000000 !important;
     }
 
     /* Calendar inner styling */
     [data-baseweb="calendar"] button {
         background: #f3e5f5 !important;
         border-radius: 6px !important;
+    }
+
+    /* ============================================================
+       DROPDOWN (SELECT) POPUP MENU — FULL WHITE STRIP, BLACK FONT
+       Every layer of the floating menu (portal wrapper, popover,
+       menu container, scroll list, and each option row) is forced
+       to a white background with black bold text so no dark strip
+       shows through from Streamlit/BaseWeb's default dark theme.
+       ============================================================ */
+    div[data-baseweb="popover"],
+    div[data-baseweb="popover"] > div,
+    div[data-baseweb="popover"] div,
+    div[data-baseweb="menu"],
+    div[data-baseweb="menu"] > div,
+    div[data-baseweb="menu"] ul,
+    ul[role="listbox"],
+    ul[role="listbox"] > div,
+    div[data-testid="stSelectboxVirtualDropdown"],
+    div[data-testid="stSelectboxVirtualDropdown"] * {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    ul[role="listbox"],
+    div[data-testid="stSelectboxVirtualDropdown"] {
+        border: 2px solid #ce93d8 !important;
+        border-radius: 10px !important;
+        box-shadow: none !important;
+    }
+
+    /* Each option row inside the popup — white box, black text by default */
+    li[role="option"],
+    div[data-baseweb="menu"] li,
+    div[data-testid="stSelectboxVirtualDropdown"] li {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-weight: 900 !important;
+    }
+
+    /* Hovered / highlighted / selected option — accent background, WHITE font */
+    li[role="option"]:hover,
+    li[role="option"][aria-selected="true"],
+    div[data-baseweb="menu"] li:hover,
+    div[data-testid="stSelectboxVirtualDropdown"] li:hover,
+    div[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
+        background: linear-gradient(90deg, #8e24aa, #f57c00) !important;
+        color: #ffffff !important;
+    }
+    li[role="option"]:hover *,
+    li[role="option"][aria-selected="true"] *,
+    div[data-testid="stSelectboxVirtualDropdown"] li:hover *,
+    div[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] * {
+        color: #ffffff !important;
+    }
+
+    /* ============================================================
+       DATE PICKER CALENDAR — SELECTED DAY FONT WHITE
+       ============================================================ */
+    div[data-baseweb="calendar"] [aria-selected="true"],
+    div[data-baseweb="calendar"] button[aria-selected="true"] {
+        background: linear-gradient(90deg, #8e24aa, #f57c00) !important;
+        color: #ffffff !important;
+    }
+    div[data-baseweb="calendar"] [aria-selected="true"] *,
+    div[data-baseweb="calendar"] button[aria-selected="true"] * {
+        color: #ffffff !important;
     }
 
     /* Sidebar radio selection */
@@ -740,7 +817,6 @@ elif page == "Person Profile":
         st.subheader(f"👤 {profile['Full Name']}")
         c1, c2, c3 = st.columns(3)
         
-        # 16px Font Size applied to City, Phone, and Expense metric titles/values
         with c1:
             st.markdown(f'<div class="profile-metric-font">City<br><b>{profile["City"] or "Not added"}</b></div>', unsafe_allow_html=True)
         with c2:
@@ -751,7 +827,6 @@ elif page == "Person Profile":
 
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # 15px Font Size applied to profile personal info
         st.markdown(f'<p class="profile-info-font"><b>Email:</b> {profile["Email"] or "Not added"}</p>', unsafe_allow_html=True)
         st.markdown(f'<p class="profile-info-font"><b>Passport Number:</b> {profile["Passport Number"] or "Not added"}</p>', unsafe_allow_html=True)
 
@@ -818,7 +893,3 @@ elif page == "Download Excel":
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info("No expenses available to download.")
-
-
-
-        # Excute program = python -m streamlit run app.py
