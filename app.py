@@ -24,6 +24,9 @@ DB_USER = "root"
 DB_PASSWORD = "Prem@1326"
 DB_NAME = "travel_expense_manager"
 
+# Admin login
+ADMIN_USERNAME = "sayalik"
+ADMIN_PASSWORD = "Sau@1303"
 
 CATEGORIES = [
     "Flights",
@@ -53,11 +56,154 @@ PAYMENT_METHODS = [
 
 
 # ==============================================================================
-# 2. DATABASE OPERATIONS & CONNECTION POOLING
+# 2. LOGIN / ACCESS CONTROL
+# ==============================================================================
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "access_type" not in st.session_state:
+    st.session_state.access_type = None
+
+
+def login_screen():
+
+    st.markdown(
+        """
+        <div class="login-box">
+            <h1>✈️ Travel Expense Manager</h1>
+            <p>Select your access type</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    access = st.radio(
+        "Access Type",
+        ["User", "Admin"],
+        horizontal=True
+    )
+
+    # --------------------------------------------------------------------------
+    # USER LOGIN
+    # --------------------------------------------------------------------------
+
+    if access == "User":
+
+        st.info(
+            "User access does not require a password."
+        )
+
+        if st.button(
+            "👤 Continue as User",
+            use_container_width=True
+        ):
+
+            st.session_state.logged_in = True
+            st.session_state.access_type = "User"
+
+            st.rerun()
+
+    # --------------------------------------------------------------------------
+    # ADMIN LOGIN
+    # --------------------------------------------------------------------------
+
+    else:
+
+        username = st.text_input(
+            "Admin Username"
+        )
+
+        password = st.text_input(
+            "Admin Password",
+            type="password"
+        )
+
+        if st.button(
+            "🔐 Admin Login",
+            use_container_width=True
+        ):
+
+            if (
+                username == ADMIN_USERNAME
+                and password == ADMIN_PASSWORD
+            ):
+
+                st.session_state.logged_in = True
+                st.session_state.access_type = "Admin"
+
+                st.success(
+                    "✅ Admin login successful!"
+                )
+
+                st.rerun()
+
+            else:
+
+                st.error(
+                    "❌ Invalid admin username or password."
+                )
+
+
+# ==============================================================================
+# LOGIN PAGE CSS
+# ==============================================================================
+
+st.markdown(
+    """
+    <style>
+
+    .login-box {
+        padding: 35px;
+        border-radius: 25px;
+        margin-bottom: 30px;
+        text-align: center;
+
+        background:
+        linear-gradient(
+            100deg,
+            #8e24aa,
+            #f57c00,
+            #ffb74d
+        );
+    }
+
+    .login-box h1 {
+        color: white !important;
+        font-weight: 900 !important;
+        font-size: 38px !important;
+    }
+
+    .login-box p {
+        color: white !important;
+        font-weight: 900 !important;
+        font-size: 18px !important;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# ==============================================================================
+# SHOW LOGIN PAGE
+# ==============================================================================
+
+if not st.session_state.logged_in:
+
+    login_screen()
+
+    st.stop()
+
+
+# ==============================================================================
+# 3. DATABASE OPERATIONS & CONNECTION POOLING
 # ==============================================================================
 
 @st.cache_resource
 def get_connection_pool():
+
     return pooling.MySQLConnectionPool(
         pool_name="mypool",
         pool_size=5,
@@ -69,10 +215,12 @@ def get_connection_pool():
 
 
 def db():
+
     return get_connection_pool().get_connection()
 
 
 def setup_database():
+
     con = db()
     cur = con.cursor()
 
@@ -103,6 +251,7 @@ def setup_database():
     """)
 
     con.commit()
+
     cur.close()
     con.close()
 
@@ -137,11 +286,12 @@ def get_people():
             "Email",
             "Phone",
             "City",
-            "Passport Number",
+            "Passport Number"
         ],
     )
 
     if not df.empty:
+
         df.insert(
             0,
             "S.No",
@@ -179,8 +329,8 @@ def add_person(
             email,
             phone,
             city,
-            passport,
-        ),
+            passport
+        )
     )
 
     con.commit()
@@ -204,12 +354,14 @@ def update_person(
     cur.execute(
         """
         UPDATE people
+
         SET
             full_name=%s,
             email=%s,
             phone=%s,
             city=%s,
             passport_number=%s
+
         WHERE id=%s
         """,
         (
@@ -218,8 +370,8 @@ def update_person(
             phone,
             city,
             passport,
-            person_id,
-        ),
+            person_id
+        )
     )
 
     con.commit()
@@ -234,7 +386,10 @@ def delete_person(person_id):
     cur = con.cursor()
 
     cur.execute(
-        "DELETE FROM people WHERE id=%s",
+        """
+        DELETE FROM people
+        WHERE id=%s
+        """,
         (person_id,)
     )
 
@@ -259,7 +414,9 @@ def get_expenses(person_id=None):
             expenses.amount,
             expenses.payment_method,
             expenses.person_id
+
         FROM expenses
+
         LEFT JOIN people
         ON people.id = expenses.person_id
     """
@@ -268,21 +425,22 @@ def get_expenses(person_id=None):
 
         query += """
             WHERE expenses.person_id = %s
-            ORDER BY expenses.expense_date DESC
         """
 
         cur.execute(
-            query,
+            query + """
+                ORDER BY expenses.expense_date DESC
+            """,
             (person_id,)
         )
 
     else:
 
-        query += """
-            ORDER BY expenses.expense_date DESC
-        """
-
-        cur.execute(query)
+        cur.execute(
+            query + """
+                ORDER BY expenses.expense_date DESC
+            """
+        )
 
     rows = cur.fetchall()
 
@@ -299,8 +457,8 @@ def get_expenses(person_id=None):
             "Category",
             "Amount",
             "Payment Method",
-            "Person ID",
-        ],
+            "Person ID"
+        ]
     )
 
     if not data.empty:
@@ -347,8 +505,8 @@ def add_expense(
             description,
             category,
             amount,
-            payment,
-        ),
+            payment
+        )
     )
 
     con.commit()
@@ -373,6 +531,7 @@ def update_expense(
     cur.execute(
         """
         UPDATE expenses
+
         SET
             person_id=%s,
             expense_date=%s,
@@ -380,6 +539,7 @@ def update_expense(
             category=%s,
             amount=%s,
             payment_method=%s
+
         WHERE id=%s
         """,
         (
@@ -389,8 +549,8 @@ def update_expense(
             category,
             amount,
             payment,
-            expense_id,
-        ),
+            expense_id
+        )
     )
 
     con.commit()
@@ -405,7 +565,10 @@ def delete_expense(expense_id):
     cur = con.cursor()
 
     cur.execute(
-        "DELETE FROM expenses WHERE id=%s",
+        """
+        DELETE FROM expenses
+        WHERE id=%s
+        """,
         (expense_id,)
     )
 
@@ -416,7 +579,7 @@ def delete_expense(expense_id):
 
 
 # ==============================================================================
-# 3. HELPER FUNCTIONS & VALIDATION
+# 4. HELPER FUNCTIONS
 # ==============================================================================
 
 def validate_person_input(
@@ -428,24 +591,29 @@ def validate_person_input(
 ):
 
     if not name.strip():
+
         return "Full Name cannot be empty."
 
     if len(name) > 30:
+
         return "Full Name must not exceed 30 characters."
 
     if email and len(email) > 30:
+
         return "Email must not exceed 30 characters."
 
     if phone and (
         not phone.isdigit()
         or len(phone) > 10
     ):
+
         return (
             "Phone number must contain digits only "
             "and not exceed 10 digits."
         )
 
     if city and len(city) > 10:
+
         return "City must not exceed 10 characters."
 
     if passport:
@@ -457,6 +625,7 @@ def validate_person_input(
             or not p[0].isalpha()
             or not p[1:].isdigit()
         ):
+
             return (
                 "Passport must be 8 characters: "
                 "1 Letter followed by 7 Digits "
@@ -467,6 +636,7 @@ def validate_person_input(
 
 
 def money(value):
+
     return f"₹ {value:,.2f}"
 
 
@@ -491,21 +661,23 @@ def excel_file(data):
 def safe_index(lst, value):
 
     try:
+
         return lst.index(value)
 
     except ValueError:
+
         return 0
 
 
 # ==============================================================================
-# INITIALIZE DATABASE
+# 5. DATABASE INITIALIZATION
 # ==============================================================================
 
 setup_database()
 
 
 # ==============================================================================
-# 4. GLOBAL CSS STYLING
+# 6. GLOBAL CSS
 # ==============================================================================
 
 st.markdown(
@@ -555,9 +727,6 @@ st.markdown(
         font-weight: 900 !important;
     }
 
-
-    /* WHITE INPUT BOXES */
-
     div[data-baseweb="input"],
     div[data-baseweb="select"] > div,
     div[data-baseweb="base-input"],
@@ -573,37 +742,23 @@ st.markdown(
     .stDownloadButton > button {
 
         background: #ffffff !important;
-
-        border:
-        2px solid #ce93d8 !important;
-
+        border: 2px solid #ce93d8 !important;
         border-radius: 10px !important;
     }
-
-
-    /* BLACK INPUT TEXT */
 
     .stNumberInput input,
     .stTextInput input,
     .stDateInput input,
-    .stSelectbox
-    div[data-baseweb="select"] > div {
+    .stSelectbox div[data-baseweb="select"] > div {
 
         color: #000000 !important;
     }
 
-
-    /* CALENDAR */
-
     [data-baseweb="calendar"] button {
 
         background: #f3e5f5 !important;
-
         border-radius: 6px !important;
     }
-
-
-    /* DROPDOWN */
 
     div[data-baseweb="popover"],
     div[data-baseweb="popover"] > div,
@@ -620,39 +775,30 @@ st.markdown(
         color: #000000 !important;
     }
 
-
     div[data-baseweb="popover"],
     div[data-baseweb="menu"],
     ul[role="listbox"],
     div[data-testid="stSelectboxVirtualDropdown"] {
 
-        border:
-        2px solid #ce93d8 !important;
-
+        border: 2px solid #ce93d8 !important;
         border-radius: 10px !important;
-
         box-shadow: none !important;
     }
-
 
     li[role="option"],
     div[data-baseweb="menu"] li,
     div[data-testid="stSelectboxVirtualDropdown"] li {
 
         background: #ffffff !important;
-
         color: #000000 !important;
-
         font-weight: 900 !important;
     }
-
 
     li[role="option"]:hover,
     li[role="option"][aria-selected="true"],
     div[data-baseweb="menu"] li:hover,
     div[data-testid="stSelectboxVirtualDropdown"] li:hover,
-    div[data-testid="stSelectboxVirtualDropdown"]
-    li[aria-selected="true"] {
+    div[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
 
         background:
         linear-gradient(
@@ -663,25 +809,17 @@ st.markdown(
 
         color: #ffffff !important;
     }
-
 
     li[role="option"]:hover *,
     li[role="option"][aria-selected="true"] *,
-    div[data-testid="stSelectboxVirtualDropdown"]
-    li:hover *,
-    div[data-testid="stSelectboxVirtualDropdown"]
-    li[aria-selected="true"] * {
+    div[data-testid="stSelectboxVirtualDropdown"] li:hover *,
+    div[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] * {
 
         color: #ffffff !important;
     }
 
-
-    /* SELECTED DATE */
-
-    div[data-baseweb="calendar"]
-    [aria-selected="true"],
-    div[data-baseweb="calendar"]
-    button[aria-selected="true"] {
+    div[data-baseweb="calendar"] [aria-selected="true"],
+    div[data-baseweb="calendar"] button[aria-selected="true"] {
 
         background:
         linear-gradient(
@@ -693,17 +831,11 @@ st.markdown(
         color: #ffffff !important;
     }
 
-
-    div[data-baseweb="calendar"]
-    [aria-selected="true"] *,
-    div[data-baseweb="calendar"]
-    button[aria-selected="true"] * {
+    div[data-baseweb="calendar"] [aria-selected="true"] *,
+    div[data-baseweb="calendar"] button[aria-selected="true"] * {
 
         color: #ffffff !important;
     }
-
-
-    /* SIDEBAR RADIO */
 
     [data-testid="stSidebar"] .stRadio label {
 
@@ -724,12 +856,6 @@ st.markdown(
         margin: 6px 0;
     }
 
-
-    /* ==========================================================
-       HEADER
-       ONLY TRAVEL EXPENSE MANAGER IS SHOWN
-       ========================================================== */
-
     .hero {
 
         padding: 30px;
@@ -747,25 +873,15 @@ st.markdown(
         );
     }
 
-
     .hero h1 {
 
         color: white !important;
-
         font-weight: 900 !important;
-
-        font-size: 38px;
-
-        margin: 0;
     }
-
-
-    /* SECTION TITLE */
 
     .section-title {
 
         color: black !important;
-
         font-weight: 900 !important;
 
         border-left:
@@ -774,16 +890,11 @@ st.markdown(
         padding-left: 12px;
     }
 
-
     .eyebrow {
 
         color: #8e24aa !important;
-
         font-weight: 900 !important;
     }
-
-
-    /* METRICS */
 
     [data-testid="stMetric"] {
 
@@ -802,9 +913,6 @@ st.markdown(
         box-shadow:
         4px 4px 0 #f57c00;
     }
-
-
-    /* BUTTONS */
 
     .stButton > button,
     .stFormSubmitButton > button {
@@ -825,32 +933,26 @@ st.markdown(
         border-radius: 12px !important;
     }
 
-
-    /* PROFILE */
-
     .profile-metric-font {
 
         font-size: 16px !important;
-
         font-weight: 900 !important;
     }
-
 
     .profile-info-font {
 
         font-size: 15px !important;
-
         font-weight: 900 !important;
     }
 
     </style>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
 
 # ==============================================================================
-# HEADER
+# 7. HEADER
 # ==============================================================================
 
 st.markdown(
@@ -859,12 +961,40 @@ st.markdown(
         <h1>✈️ Travel Expense Manager</h1>
     </div>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
 
 # ==============================================================================
-# FETCH CURRENT PEOPLE STATE
+# 8. SIDEBAR USER INFORMATION
+# ==============================================================================
+
+if st.session_state.access_type == "Admin":
+
+    st.sidebar.success(
+        "🔐 Logged in as ADMIN"
+    )
+
+else:
+
+    st.sidebar.info(
+        "👤 Logged in as USER"
+    )
+
+
+if st.sidebar.button(
+    "🚪 Logout",
+    use_container_width=True
+):
+
+    st.session_state.logged_in = False
+    st.session_state.access_type = None
+
+    st.rerun()
+
+
+# ==============================================================================
+# 9. FETCH PEOPLE
 # ==============================================================================
 
 people = get_people()
@@ -873,20 +1003,24 @@ person_options = (
     {
         f"{row['S.No']} - {row['Full Name']}":
         row["DB_ID"]
+
         for _, row in people.iterrows()
     }
+
     if not people.empty
+
     else {}
 )
 
 
 # ==============================================================================
-# NAVIGATION SIDEBAR
+# 10. NAVIGATION
 # ==============================================================================
 
-page = st.sidebar.radio(
-    "Navigate",
-    [
+# ADMIN HAS ALL OPTIONS
+if st.session_state.access_type == "Admin":
+
+    navigation_options = [
         "Add Person",
         "People Directory",
         "Add Expense",
@@ -897,21 +1031,49 @@ page = st.sidebar.radio(
         "Manage Expenses",
         "Person Profile",
         "Download Excel",
-    ],
+    ]
+
+# USER HAS ONLY VIEW OPTIONS
+else:
+
+    navigation_options = [
+        "View Expenses",
+        "Categories",
+        "Reports",
+        "Budget Prediction",
+        "Person Profile",
+        "Download Excel",
+    ]
+
+
+page = st.sidebar.radio(
+    "Navigate",
+    navigation_options
 )
 
 
 # ==============================================================================
 # PAGE 1: ADD PERSON
+# ADMIN ONLY
 # ==============================================================================
 
 if page == "Add Person":
+
+    if st.session_state.access_type != "Admin":
+
+        st.error(
+            "🚫 Admin access required."
+        )
+
+        st.stop()
+
 
     st.markdown(
         '<p class="eyebrow">STEP 1</p>'
         '<h2 class="section-title">Add Person</h2>',
         unsafe_allow_html=True
     )
+
 
     with st.form(
         "person_form",
@@ -947,6 +1109,7 @@ if page == "Add Person":
             "👤 Save Person"
         )
 
+
     if save:
 
         error = validate_person_input(
@@ -980,15 +1143,26 @@ if page == "Add Person":
 
 # ==============================================================================
 # PAGE 2: PEOPLE DIRECTORY
+# ADMIN ONLY
 # ==============================================================================
 
 elif page == "People Directory":
+
+    if st.session_state.access_type != "Admin":
+
+        st.error(
+            "🚫 Admin access required."
+        )
+
+        st.stop()
+
 
     st.markdown(
         '<p class="eyebrow">STEP 2</p>'
         '<h2 class="section-title">People Directory</h2>',
         unsafe_allow_html=True
     )
+
 
     if not people.empty:
 
@@ -1002,7 +1176,11 @@ elif page == "People Directory":
             hide_index=True
         )
 
+
         col1, col2 = st.columns(2)
+
+
+        # EDIT PERSON
 
         with col1:
 
@@ -1025,6 +1203,7 @@ elif page == "People Directory":
             p_row = people[
                 people["DB_ID"] == selected_db_id
             ].iloc[0]
+
 
             with st.form(
                 "edit_person_form"
@@ -1064,6 +1243,7 @@ elif page == "People Directory":
                     "💾 Save Changes"
                 )
 
+
             if update_p:
 
                 error = validate_person_input(
@@ -1095,6 +1275,9 @@ elif page == "People Directory":
 
                     st.rerun()
 
+
+        # DELETE PERSON
+
         with col2:
 
             st.markdown("---")
@@ -1109,6 +1292,7 @@ elif page == "People Directory":
                 key="del_p"
             )
 
+
             if st.button(
                 "❌ Delete Selected Person"
             ):
@@ -1120,10 +1304,11 @@ elif page == "People Directory":
                 )
 
                 st.success(
-                    "✅ Person and associated record deleted successfully!"
+                    "✅ Person and associated records deleted successfully!"
                 )
 
                 st.rerun()
+
 
     else:
 
@@ -1134,15 +1319,26 @@ elif page == "People Directory":
 
 # ==============================================================================
 # PAGE 3: ADD EXPENSE
+# ADMIN ONLY
 # ==============================================================================
 
 elif page == "Add Expense":
+
+    if st.session_state.access_type != "Admin":
+
+        st.error(
+            "🚫 Admin access required."
+        )
+
+        st.stop()
+
 
     st.markdown(
         '<p class="eyebrow">STEP 3</p>'
         '<h2 class="section-title">Add Expense</h2>',
         unsafe_allow_html=True
     )
+
 
     if not person_options:
 
@@ -1155,6 +1351,7 @@ elif page == "Add Expense":
         person_keys = list(
             person_options.keys()
         )
+
 
         if (
             "selected_person_expense"
@@ -1169,8 +1366,9 @@ elif page == "Add Expense":
                 "selected_person_expense"
             ] = person_keys[0]
 
+
         selected_p = st.selectbox(
-            "Select Person (Remains Selected for Next Entries)",
+            "Select Person",
             person_keys,
             index=person_keys.index(
                 st.session_state[
@@ -1180,9 +1378,11 @@ elif page == "Add Expense":
             key="person_select_dropdown"
         )
 
+
         st.session_state[
             "selected_person_expense"
         ] = selected_p
+
 
         with st.form(
             "expense_form",
@@ -1222,6 +1422,7 @@ elif page == "Add Expense":
                 "💾 Save Expense"
             )
 
+
         if save:
 
             if (
@@ -1239,7 +1440,7 @@ elif page == "Add Expense":
                 )
 
                 st.success(
-                    f"✅ Expense saved for {selected_p}!"
+                    "✅ Expense saved successfully!"
                 )
 
                 st.rerun()
@@ -1251,100 +1452,20 @@ elif page == "Add Expense":
                     "and an amount greater than 0."
                 )
 
-        p_id = person_options[selected_p]
-
-        p_expenses = get_expenses(
-            p_id
-        )
-
-        if not p_expenses.empty:
-
-            st.markdown("---")
-
-            st.subheader(
-                f"📊 Live Spending Insights ({selected_p})"
-            )
-
-            g_col1, g_col2 = st.columns(2)
-
-            with g_col1:
-
-                st.write(
-                    "**Payment Method Breakdown (Donut Chart)**"
-                )
-
-                pay_data = (
-                    p_expenses
-                    .groupby(
-                        "Payment Method",
-                        as_index=False
-                    )["Amount"]
-                    .sum()
-                )
-
-                fig_pay, ax_pay = plt.subplots()
-
-                ax_pay.pie(
-                    pay_data["Amount"],
-                    labels=pay_data[
-                        "Payment Method"
-                    ],
-                    autopct="%1.1f%%",
-                    startangle=90,
-                    wedgeprops=dict(
-                        width=0.4,
-                        edgecolor="w"
-                    )
-                )
-
-                ax_pay.axis("equal")
-
-                st.pyplot(fig_pay)
-
-            with g_col2:
-
-                st.write(
-                    "**Daily Expense Distribution (Scatter Plot)**"
-                )
-
-                fig_scat, ax_scat = plt.subplots()
-
-                ax_scat.scatter(
-                    p_expenses["Date"],
-                    p_expenses["Amount"],
-                    color="#f57c00",
-                    s=p_expenses[
-                        "Amount"
-                    ] / 2 + 30,
-                    alpha=0.7
-                )
-
-                plt.xticks(
-                    rotation=45
-                )
-
-                ax_scat.set_ylabel(
-                    "Amount (₹)"
-                )
-
-                ax_scat.set_xlabel(
-                    "Date"
-                )
-
-                st.pyplot(fig_scat)
-
 
 # ==============================================================================
 # PAGE 4: VIEW EXPENSES
+# USER + ADMIN
 # ==============================================================================
 
 elif page == "View Expenses":
 
     st.markdown(
-        '<p class="eyebrow">STEP 4</p>'
+        '<p class="eyebrow">EXPENSES</p>'
         '<h2 class="section-title">View Expenses</h2>',
         unsafe_allow_html=True
     )
+
 
     if not person_options:
 
@@ -1359,10 +1480,12 @@ elif page == "View Expenses":
             + list(person_options.keys())
         )
 
+
         selected_filter = st.selectbox(
             "🔍 Filter Expenses by Person",
             filter_options
         )
+
 
         if selected_filter == "All People":
 
@@ -1378,15 +1501,17 @@ elif page == "View Expenses":
                 p_id
             )
 
+
         if expenses.empty:
 
             st.info(
-                "No expenses found for the selected selection."
+                "No expenses found."
             )
 
         else:
 
             c1, c2, c3 = st.columns(3)
+
 
             c1.metric(
                 "Total Spending",
@@ -1395,15 +1520,18 @@ elif page == "View Expenses":
                 )
             )
 
+
             c2.metric(
                 "Total Expenses",
                 len(expenses)
             )
 
+
             c3.metric(
                 "People Count",
                 expenses["Person"].nunique()
             )
+
 
             st.dataframe(
                 expenses.drop(
@@ -1419,23 +1547,27 @@ elif page == "View Expenses":
 
 # ==============================================================================
 # PAGE 5: CATEGORIES
+# USER + ADMIN
 # ==============================================================================
 
 elif page == "Categories":
 
     st.markdown(
-        '<p class="eyebrow">STEP 5</p>'
+        '<p class="eyebrow">ANALYTICS</p>'
         '<h2 class="section-title">Categories</h2>',
         unsafe_allow_html=True
     )
 
+
     expenses = get_expenses()
+
 
     summary = pd.DataFrame(
         {
             "Category": CATEGORIES
         }
     )
+
 
     if not expenses.empty:
 
@@ -1462,32 +1594,31 @@ elif page == "Categories":
 
         summary["Amount"] = 0.0
 
+
     summary.insert(
         0,
         "S.No",
         range(1, len(summary) + 1)
     )
 
+
     summary_display = summary.copy()
 
     summary_display["Amount"] = (
-        summary_display[
-            "Amount"
-        ].apply(
+        summary_display["Amount"]
+        .apply(
             lambda x:
             f"₹ {x:,.2f}"
         )
     )
 
+
     st.dataframe(
-        summary_display.style.set_properties(
-            **{
-                "text-align": "center"
-            }
-        ),
+        summary_display,
         use_container_width=True,
         hide_index=True
     )
+
 
     st.markdown("---")
 
@@ -1495,7 +1626,9 @@ elif page == "Categories":
         "📊 Category Visualization"
     )
 
+
     c1, c2 = st.columns(2)
+
 
     with c1:
 
@@ -1509,6 +1642,7 @@ elif page == "Categories":
             ]
         )
 
+
     with c2:
 
         chart_color = st.color_picker(
@@ -1516,9 +1650,11 @@ elif page == "Categories":
             "#8e24aa"
         )
 
+
     fig, ax = plt.subplots(
         figsize=(10, 4)
     )
+
 
     if chart_type == "Bar Chart":
 
@@ -1527,6 +1663,7 @@ elif page == "Categories":
             summary["Amount"],
             color=chart_color
         )
+
 
     elif chart_type == "Line Chart":
 
@@ -1537,6 +1674,7 @@ elif page == "Categories":
             marker="o",
             linewidth=2
         )
+
 
     elif chart_type == "Area Chart":
 
@@ -1558,8 +1696,11 @@ elif page == "Categories":
         )
 
         ax.set_xticklabels(
-            summary["Category"]
+            summary["Category"],
+            rotation=45,
+            ha="right"
         )
+
 
     elif chart_type == "Scatter Plot":
 
@@ -1569,6 +1710,7 @@ elif page == "Categories":
             color=chart_color,
             s=100
         )
+
 
     plt.xticks(
         rotation=45,
@@ -1584,28 +1726,30 @@ elif page == "Categories":
 
 # ==============================================================================
 # PAGE 6: REPORTS
+# USER + ADMIN
 # ==============================================================================
 
 elif page == "Reports":
 
     st.markdown(
-        '<p class="eyebrow">STEP 6</p>'
-        '<h2 class="section-title">'
-        'Reports & Advanced Analytics'
-        '</h2>',
+        '<p class="eyebrow">ANALYTICS</p>'
+        '<h2 class="section-title">Reports & Advanced Analytics</h2>',
         unsafe_allow_html=True
     )
 
+
     expenses = get_expenses()
+
 
     if not expenses.empty:
 
         col_c1, col_c2 = st.columns(2)
 
+
         with col_c1:
 
             report_style = st.selectbox(
-                "Select Unique Report Graph Type",
+                "Select Report Graph Type",
                 [
                     "Horizontal Bar",
                     "Polar Rose Chart",
@@ -1614,6 +1758,7 @@ elif page == "Reports":
                 ]
             )
 
+
         with col_c2:
 
             base_color = st.color_picker(
@@ -1621,19 +1766,17 @@ elif page == "Reports":
                 "#8e24aa"
             )
 
-        st.markdown("---")
 
         fig, ax = plt.subplots(
             figsize=(10, 5)
         )
 
+
         if report_style == "Horizontal Bar":
 
             report = (
                 expenses
-                .groupby("Category")[
-                    "Amount"
-                ]
+                .groupby("Category")["Amount"]
                 .sum()
                 .sort_values()
             )
@@ -1648,15 +1791,14 @@ elif page == "Reports":
                 "Total Amount (₹)"
             )
 
+
         elif report_style == "Polar Rose Chart":
 
             fig.clear()
 
             report = (
                 expenses
-                .groupby("Category")[
-                    "Amount"
-                ]
+                .groupby("Category")["Amount"]
                 .sum()
             )
 
@@ -1688,13 +1830,12 @@ elif page == "Reports":
                 report.index
             )
 
+
         elif report_style == "Category Donut Chart":
 
             report = (
                 expenses
-                .groupby("Category")[
-                    "Amount"
-                ]
+                .groupby("Category")["Amount"]
                 .sum()
             )
 
@@ -1708,6 +1849,7 @@ elif page == "Reports":
             )
 
             ax.axis("equal")
+
 
         elif report_style == "Payment Stacked Bar":
 
@@ -1733,33 +1875,35 @@ elif page == "Reports":
                 ha="right"
             )
 
+
         st.pyplot(fig)
+
 
     else:
 
         st.info(
-            "No expense data available for reports."
+            "No expense data available."
         )
 
 
 # ==============================================================================
 # PAGE 7: BUDGET PREDICTION
+# USER + ADMIN
 # ==============================================================================
 
 elif page == "Budget Prediction":
 
     st.markdown(
-        '<p class="eyebrow">STEP 7</p>'
-        '<h2 class="section-title">'
-        'Budget Prediction'
-        '</h2>',
+        '<p class="eyebrow">ANALYTICS</p>'
+        '<h2 class="section-title">Budget Prediction</h2>',
         unsafe_allow_html=True
     )
+
 
     if not person_options:
 
         st.info(
-            "Add a person and expenses first."
+            "No people available."
         )
 
     else:
@@ -1769,13 +1913,16 @@ elif page == "Budget Prediction":
             list(person_options.keys())
         )
 
+
         p_id = person_options[
             selected_p
         ]
 
+
         expenses = get_expenses(
             p_id
         )
+
 
         if not expenses.empty:
 
@@ -1783,9 +1930,11 @@ elif page == "Budget Prediction":
                 pd.to_datetime(
                     expenses["Date"]
                 )
-                .dt.to_period("M")
+                .dt
+                .to_period("M")
                 .astype(str)
             )
+
 
             monthly = (
                 expenses
@@ -1796,6 +1945,7 @@ elif page == "Budget Prediction":
                 .sum()
             )
 
+
             st.metric(
                 "Suggested Budget for Next Month",
                 money(
@@ -1803,91 +1953,19 @@ elif page == "Budget Prediction":
                 )
             )
 
-            c1, c2 = st.columns(2)
-
-            with c1:
-
-                p_chart_type = st.selectbox(
-                    "Prediction Graph Style",
-                    [
-                        "Spline Curve",
-                        "Stacked Fill Area",
-                        "Step Plot",
-                        "3D-Style Column"
-                    ]
-                )
-
-            with c2:
-
-                p_chart_color = st.color_picker(
-                    "Chart Primary Accent Color",
-                    "#f57c00"
-                )
 
             fig, ax = plt.subplots(
                 figsize=(10, 4)
             )
 
-            if p_chart_type == "Spline Curve":
 
-                ax.plot(
-                    monthly["Month"],
-                    monthly["Amount"],
-                    color=p_chart_color,
-                    marker="o",
-                    linestyle="-",
-                    linewidth=3
-                )
+            ax.plot(
+                monthly["Month"],
+                monthly["Amount"],
+                marker="o",
+                linewidth=3
+            )
 
-                ax.grid(
-                    True,
-                    linestyle="--",
-                    alpha=0.5
-                )
-
-            elif p_chart_type == "Stacked Fill Area":
-
-                ax.fill_between(
-                    range(len(monthly)),
-                    monthly["Amount"],
-                    color=p_chart_color,
-                    alpha=0.4
-                )
-
-                ax.plot(
-                    range(len(monthly)),
-                    monthly["Amount"],
-                    color=p_chart_color,
-                    linewidth=2
-                )
-
-                ax.set_xticks(
-                    range(len(monthly))
-                )
-
-                ax.set_xticklabels(
-                    monthly["Month"]
-                )
-
-            elif p_chart_type == "Step Plot":
-
-                ax.step(
-                    monthly["Month"],
-                    monthly["Amount"],
-                    color=p_chart_color,
-                    where="mid",
-                    linewidth=3
-                )
-
-            elif p_chart_type == "3D-Style Column":
-
-                ax.bar(
-                    monthly["Month"],
-                    monthly["Amount"],
-                    color=p_chart_color,
-                    edgecolor="black",
-                    linewidth=1.5
-                )
 
             ax.set_xlabel(
                 "Month"
@@ -1897,30 +1975,43 @@ elif page == "Budget Prediction":
                 "Total Spending (₹)"
             )
 
+            plt.xticks(
+                rotation=45
+            )
+
             st.pyplot(fig)
+
 
         else:
 
             st.info(
                 "Add expenses across months "
-                "to generate a budget prediction "
-                "for this person."
+                "to generate a budget prediction."
             )
 
 
 # ==============================================================================
 # PAGE 8: MANAGE EXPENSES
+# ADMIN ONLY
 # ==============================================================================
 
 elif page == "Manage Expenses":
 
+    if st.session_state.access_type != "Admin":
+
+        st.error(
+            "🚫 Admin access required."
+        )
+
+        st.stop()
+
+
     st.markdown(
-        '<p class="eyebrow">STEP 8</p>'
-        '<h2 class="section-title">'
-        'Manage Expenses (Edit / Delete)'
-        '</h2>',
+        '<p class="eyebrow">ADMIN</p>'
+        '<h2 class="section-title">Manage Expenses</h2>',
         unsafe_allow_html=True
     )
+
 
     if not person_options:
 
@@ -1931,22 +2022,25 @@ elif page == "Manage Expenses":
     else:
 
         selected_person_manage = st.selectbox(
-            "Select Person to Manage Expenses",
+            "Select Person",
             list(person_options.keys())
         )
+
 
         p_id = person_options[
             selected_person_manage
         ]
 
+
         expenses = get_expenses(
             p_id
         )
 
+
         if expenses.empty:
 
             st.info(
-                "No expenses available for this person."
+                "No expenses available."
             )
 
         else:
@@ -1956,21 +2050,26 @@ elif page == "Manage Expenses":
                 f"{row['Description']} "
                 f"(₹{row['Amount']})":
                 row["DB_ID"]
+
                 for _, row in expenses.iterrows()
             }
 
+
             selected_exp = st.selectbox(
-                "Select Specific Expense",
+                "Select Expense",
                 list(options.keys())
             )
+
 
             exp_id = options[
                 selected_exp
             ]
 
+
             row = expenses[
                 expenses["DB_ID"] == exp_id
             ].iloc[0]
+
 
             tab1, tab2 = st.tabs(
                 [
@@ -1979,10 +2078,11 @@ elif page == "Manage Expenses":
                 ]
             )
 
+
             with tab1:
 
                 with st.form(
-                    "edit_expense_unified_form"
+                    "edit_expense_form"
                 ):
 
                     edit_date = st.date_input(
@@ -1992,21 +2092,22 @@ elif page == "Manage Expenses":
                         ).date()
                     )
 
+
                     description = st.text_input(
                         "Description",
                         row["Description"]
                     )
 
-                    cat_idx = safe_index(
-                        CATEGORIES,
-                        row["Category"]
-                    )
 
                     category = st.selectbox(
                         "Category",
                         CATEGORIES,
-                        index=cat_idx
+                        index=safe_index(
+                            CATEGORIES,
+                            row["Category"]
+                        )
                     )
+
 
                     amount = st.number_input(
                         "Amount (₹)",
@@ -2016,20 +2117,21 @@ elif page == "Manage Expenses":
                         min_value=0.0
                     )
 
-                    pay_idx = safe_index(
-                        PAYMENT_METHODS,
-                        row["Payment Method"]
-                    )
 
                     payment = st.selectbox(
                         "Payment Method",
                         PAYMENT_METHODS,
-                        index=pay_idx
+                        index=safe_index(
+                            PAYMENT_METHODS,
+                            row["Payment Method"]
+                        )
                     )
 
+
                     update_btn = st.form_submit_button(
-                        "✏️ Save Expense Changes"
+                        "💾 Save Changes"
                     )
+
 
                 if update_btn:
 
@@ -2049,15 +2151,17 @@ elif page == "Manage Expenses":
 
                     st.rerun()
 
+
             with tab2:
 
-                st.write(
-                    f"Are you sure you want to delete "
-                    f"**'{row['Description']}'**?"
+                st.warning(
+                    f"Delete expense: "
+                    f"{row['Description']}?"
                 )
 
+
                 if st.button(
-                    "🗑️ Confirm Delete Expense"
+                    "🗑️ Confirm Delete"
                 ):
 
                     delete_expense(
@@ -2073,48 +2177,54 @@ elif page == "Manage Expenses":
 
 # ==============================================================================
 # PAGE 9: PERSON PROFILE
+# USER + ADMIN
 # ==============================================================================
 
 elif page == "Person Profile":
 
     st.markdown(
-        '<p class="eyebrow">STEP 9</p>'
-        '<h2 class="section-title">'
-        'Person Profile'
-        '</h2>',
+        '<p class="eyebrow">PROFILE</p>'
+        '<h2 class="section-title">Person Profile</h2>',
         unsafe_allow_html=True
     )
+
 
     if not person_options:
 
         st.info(
-            "Add a person first."
+            "No people available."
         )
 
     else:
 
         selected = st.selectbox(
-            "Select Person Profile",
+            "Select Person",
             list(person_options.keys())
         )
+
 
         person_id = person_options[
             selected
         ]
 
+
         profile = people[
             people["DB_ID"] == person_id
         ].iloc[0]
+
 
         person_expenses = get_expenses(
             person_id
         )
 
+
         st.subheader(
             f"👤 {profile['Full Name']}"
         )
 
+
         c1, c2, c3 = st.columns(3)
+
 
         with c1:
 
@@ -2130,6 +2240,7 @@ elif page == "Person Profile":
                 unsafe_allow_html=True
             )
 
+
         with c2:
 
             st.markdown(
@@ -2144,17 +2255,17 @@ elif page == "Person Profile":
                 unsafe_allow_html=True
             )
 
+
         with c3:
 
             total_exp = (
                 money(
-                    person_expenses[
-                        "Amount"
-                    ].sum()
+                    person_expenses["Amount"].sum()
                 )
                 if not person_expenses.empty
                 else "₹ 0.00"
             )
+
 
             st.markdown(
                 f"""
@@ -2166,10 +2277,6 @@ elif page == "Person Profile":
                 unsafe_allow_html=True
             )
 
-        st.markdown(
-            "<br>",
-            unsafe_allow_html=True
-        )
 
         st.markdown(
             f"""
@@ -2181,6 +2288,7 @@ elif page == "Person Profile":
             unsafe_allow_html=True
         )
 
+
         st.markdown(
             f"""
             <p class="profile-info-font">
@@ -2191,19 +2299,19 @@ elif page == "Person Profile":
             unsafe_allow_html=True
         )
 
+
         if person_expenses.empty:
 
             st.info(
-                "This person has no expenses registered."
+                "This person has no expenses."
             )
 
         else:
 
-            st.markdown("---")
-
             st.subheader(
                 "📋 Expense History"
             )
+
 
             st.dataframe(
                 person_expenses.drop(
@@ -2216,13 +2324,16 @@ elif page == "Person Profile":
                 hide_index=True
             )
 
+
             person_expenses["Month"] = (
                 pd.to_datetime(
                     person_expenses["Date"]
                 )
-                .dt.to_period("M")
+                .dt
+                .to_period("M")
                 .astype(str)
             )
+
 
             monthly = (
                 person_expenses
@@ -2233,220 +2344,181 @@ elif page == "Person Profile":
                 .sum()
             )
 
-            st.markdown("---")
 
             st.subheader(
-                "📈 Personal Analytics & Charts"
+                "📈 Personal Analytics"
             )
 
-            c1, c2 = st.columns(2)
 
-            with c1:
+            fig1, ax1 = plt.subplots()
 
-                prof_chart_type = st.selectbox(
-                    "Monthly Trend Graph Type",
-                    [
-                        "Line Chart",
-                        "Bar Chart",
-                        "Area Chart"
-                    ]
-                )
 
-            with c2:
+            ax1.plot(
+                monthly["Month"],
+                monthly["Amount"],
+                marker="o",
+                linewidth=2
+            )
 
-                prof_color = st.color_picker(
-                    "Pick Analytics Theme Color",
-                    "#8e24aa"
-                )
 
-            col_a, col_b = st.columns(2)
+            ax1.set_ylabel(
+                "Amount (₹)"
+            )
 
-            with col_a:
 
-                st.write(
-                    "**Monthly Expenses Trend**"
-                )
+            plt.xticks(
+                rotation=45
+            )
 
-                fig1, ax1 = plt.subplots()
 
-                if prof_chart_type == "Line Chart":
+            st.pyplot(fig1)
 
-                    ax1.plot(
-                        monthly["Month"],
-                        monthly["Amount"],
-                        color=prof_color,
-                        marker="o",
-                        linewidth=2
-                    )
 
-                elif prof_chart_type == "Bar Chart":
+            pie_data = (
+                person_expenses
+                .groupby(
+                    "Category",
+                    as_index=False
+                )["Amount"]
+                .sum()
+            )
 
-                    ax1.bar(
-                        monthly["Month"],
-                        monthly["Amount"],
-                        color=prof_color
-                    )
 
-                elif prof_chart_type == "Area Chart":
+            fig2, ax2 = plt.subplots()
 
-                    ax1.fill_between(
-                        range(len(monthly)),
-                        monthly["Amount"],
-                        color=prof_color,
-                        alpha=0.5
-                    )
 
-                    ax1.plot(
-                        range(len(monthly)),
-                        monthly["Amount"],
-                        color=prof_color
-                    )
+            ax2.pie(
+                pie_data["Amount"],
+                labels=pie_data["Category"],
+                autopct="%1.1f%%",
+                startangle=90
+            )
 
-                    ax1.set_xticks(
-                        range(len(monthly))
-                    )
 
-                    ax1.set_xticklabels(
-                        monthly["Month"]
-                    )
+            ax2.axis("equal")
 
-                plt.xticks(
-                    rotation=45
-                )
-
-                ax1.set_ylabel(
-                    "Amount (₹)"
-                )
-
-                st.pyplot(fig1)
-
-            with col_b:
-
-                st.write(
-                    "**Expense Category Breakdown**"
-                )
-
-                pie_data = (
-                    person_expenses
-                    .groupby(
-                        "Category",
-                        as_index=False
-                    )["Amount"]
-                    .sum()
-                )
-
-                fig2, ax2 = plt.subplots()
-
-                ax2.pie(
-                    pie_data["Amount"],
-                    labels=pie_data[
-                        "Category"
-                    ],
-                    autopct="%1.1f%%",
-                    startangle=90
-                )
-
-                ax2.axis("equal")
-
-                st.pyplot(fig2)
+            st.pyplot(fig2)
 
 
 # ==============================================================================
 # PAGE 10: DOWNLOAD EXCEL
+# USER + ADMIN
 # ==============================================================================
 
 elif page == "Download Excel":
 
     st.markdown(
-        '<p class="eyebrow">STEP 10</p>'
-        '<h2 class="section-title">'
-        'Download Excel'
-        '</h2>',
+        '<p class="eyebrow">DOWNLOAD</p>'
+        '<h2 class="section-title">Download Excel</h2>',
         unsafe_allow_html=True
     )
 
+
     if not person_options:
 
-        st.warning(
-            "⚠️ Please add a person first."
+        st.info(
+            "No people available."
         )
 
     else:
 
-        # --------------------------------------------------------------
-        # SELECT PERSON
-        # --------------------------------------------------------------
+        # ALL PEOPLE + INDIVIDUAL PEOPLE
+
+        download_options = (
+            ["All People"]
+            + list(person_options.keys())
+        )
+
 
         selected_download_person = st.selectbox(
-            "👤 Select Person to Download Expenses",
-            list(person_options.keys()),
-            key="download_person"
+            "👥 Select People",
+            download_options,
+            key="download_person_filter"
         )
 
-        selected_person_id = person_options[
-            selected_download_person
-        ]
 
-        # --------------------------------------------------------------
-        # GET SELECTED PERSON EXPENSES
-        # --------------------------------------------------------------
+        # ----------------------------------------------------------------------
+        # ALL PEOPLE
+        # ----------------------------------------------------------------------
 
-        selected_expenses = get_expenses(
-            selected_person_id
-        )
+        if selected_download_person == "All People":
 
-        st.markdown("---")
+            download_expenses = get_expenses()
 
-        st.subheader(
-            f"📊 Expenses for {selected_download_person}"
-        )
-
-        if selected_expenses.empty:
-
-            st.info(
-                "ℹ️ No expenses found for this person. "
-                "Add expenses first to enable Excel download."
+            file_name = (
+                "travel_expenses_all_people.xlsx"
             )
+
+
+        # ----------------------------------------------------------------------
+        # INDIVIDUAL PERSON
+        # ----------------------------------------------------------------------
 
         else:
 
-            # ----------------------------------------------------------
-            # SUMMARY
-            # ----------------------------------------------------------
+            selected_person_id = person_options[
+                selected_download_person
+            ]
 
-            c1, c2, c3 = st.columns(3)
 
-            c1.metric(
-                "Total Spending",
-                money(
-                    selected_expenses[
-                        "Amount"
-                    ].sum()
-                )
+            download_expenses = get_expenses(
+                selected_person_id
             )
 
-            c2.metric(
-                "Total Expenses",
-                len(selected_expenses)
+
+            selected_name = (
+                selected_download_person
+                .split(" - ", 1)[-1]
             )
 
-            c3.metric(
-                "Person",
-                selected_expenses[
-                    "Person"
-                ].iloc[0]
+
+            safe_name = "".join(
+                ch
+                for ch in selected_name
+                if ch.isalnum()
+                or ch in (" ", "_", "-")
+            ).strip().replace(
+                " ",
+                "_"
             )
 
-            # ----------------------------------------------------------
-            # EXPENSE TABLE
-            # ----------------------------------------------------------
 
-            download_data = selected_expenses.drop(
+            file_name = (
+                f"travel_expenses_{safe_name}.xlsx"
+            )
+
+
+        # ----------------------------------------------------------------------
+        # NO DATA
+        # ----------------------------------------------------------------------
+
+        if download_expenses.empty:
+
+            st.warning(
+                "⚠️ No expense records found "
+                "for the selected option."
+            )
+
+
+        # ----------------------------------------------------------------------
+        # DATA AVAILABLE
+        # ----------------------------------------------------------------------
+
+        else:
+
+            download_data = download_expenses.drop(
                 columns=[
                     "DB_ID",
                     "Person ID"
                 ]
             )
+
+
+            st.success(
+                f"✅ {len(download_data)} "
+                f"expense record(s) ready for download."
+            )
+
 
             st.dataframe(
                 download_data,
@@ -2454,31 +2526,25 @@ elif page == "Download Excel":
                 hide_index=True
             )
 
-            # ----------------------------------------------------------
-            # DOWNLOAD
-            # ----------------------------------------------------------
 
-            st.markdown("---")
-
-            st.subheader(
-                "📥 Download Selected Person's Excel File"
+            st.metric(
+                "Total Spending",
+                money(
+                    download_data["Amount"].sum()
+                )
             )
 
-            excel_data = excel_file(
-                download_data
-            )
 
             st.download_button(
-                label="📥 Download Excel File",
-                data=excel_data,
-                file_name=(
-                    f"{selected_expenses['Person'].iloc[0]}"
-                    "_travel_expenses.xlsx"
+                "📥 Download Excel File",
+                data=excel_file(
+                    download_data
                 ),
+                file_name=file_name,
                 mime=(
                     "application/vnd.openxmlformats-officedocument."
                     "spreadsheetml.sheet"
                 ),
-                key="download_selected_person_excel",
-                disabled=selected_expenses.empty
+                key="download_excel_button",
+                use_container_width=True
             )
